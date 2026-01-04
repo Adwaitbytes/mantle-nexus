@@ -1,12 +1,11 @@
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Zap } from "lucide-react";
 
-interface NavbarProps {
-  onLaunchClick?: () => void;
-}
-
-export function Navbar({ onLaunchClick }: NavbarProps) {
+export function Navbar() {
+  const navigate = useNavigate();
+  
   const navItems = [
     { label: "Protocol", href: "#protocol" },
     { label: "Assets", href: "#assets" },
@@ -61,7 +60,7 @@ export function Navbar({ onLaunchClick }: NavbarProps) {
             <Button
               variant="hero"
               size="sm"
-              onClick={onLaunchClick}
+              onClick={() => navigate("/app")}
               className="group"
             >
               Launch App

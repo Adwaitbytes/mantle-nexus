@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { ParticleField } from "./ParticleField";
 import { StatsBar } from "./StatsBar";
 import { Button } from "@/components/ui/button";
@@ -6,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowRight, Play, Sparkles } from "lucide-react";
 
 export function HeroSection() {
+  const navigate = useNavigate();
+  
   return (
     <section className="relative min-h-screen overflow-hidden pt-32">
       {/* Background gradient */}
@@ -65,7 +68,12 @@ export function HeroSection() {
             transition={{ duration: 0.8, delay: 0.3 }}
             className="mt-10 flex flex-col items-center gap-4 sm:flex-row"
           >
-            <Button variant="hero" size="xl" className="group">
+            <Button 
+              variant="hero" 
+              size="xl" 
+              className="group"
+              onClick={() => navigate("/app")}
+            >
               Start Earning Yield
               <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
             </Button>

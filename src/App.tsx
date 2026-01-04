@@ -6,6 +6,12 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import { AppLayout } from "./layouts/AppLayout";
+import { Dashboard } from "./pages/Dashboard";
+import { Assets } from "./pages/Assets";
+import { RiskCenter } from "./pages/RiskCenter";
+import { ComplianceCenter } from "./pages/ComplianceCenter";
+import { Bridge } from "./pages/Bridge";
 
 const queryClient = new QueryClient();
 
@@ -18,6 +24,14 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
+            {/* App Dashboard Routes */}
+            <Route path="/app" element={<AppLayout />}>
+              <Route index element={<Dashboard />} />
+              <Route path="assets" element={<Assets />} />
+              <Route path="risk" element={<RiskCenter />} />
+              <Route path="compliance" element={<ComplianceCenter />} />
+              <Route path="bridge" element={<Bridge />} />
+            </Route>
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
