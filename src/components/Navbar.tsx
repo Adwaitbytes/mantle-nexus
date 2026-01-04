@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { WalletButton } from "@/components/WalletButton";
 import { ArrowRight, Zap } from "lucide-react";
 
 export function Navbar() {
@@ -54,9 +55,9 @@ export function Navbar() {
 
           {/* CTA */}
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" className="hidden sm:flex">
-              Connect Wallet
-            </Button>
+            <div className="hidden sm:flex">
+              <WalletButton variant="compact" />
+            </div>
             <Button
               variant="hero"
               size="sm"

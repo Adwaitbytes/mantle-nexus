@@ -5,6 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
+import { useWallet } from "@/hooks/useWalletConnect";
+import { useComplianceStatus, useKYCStatus } from "@/hooks/useContracts";
+import { type Address } from 'viem';
 import {
   Shield,
   Lock,
@@ -23,17 +26,10 @@ import {
   Calendar,
   Fingerprint,
   ShieldCheck,
+  Wallet,
+  ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-const kycStatus = {
-  verified: true,
-  level: "Accredited Investor",
-  jurisdiction: "United States",
-  verifiedAt: "2024-12-15",
-  expiresAt: "2025-12-15",
-  proofHash: "0x7a2f8c3e91b6d4ac7892e41bc53a4b8c9f2e1d3c4b5a6987",
-};
 
 const disclosureSettings = [
   {
@@ -113,6 +109,11 @@ export function ComplianceCenter() {
   const [settings, setSettings] = useState(disclosureSettings);
   const [showProofDetails, setShowProofDetails] = useState(false);
 
+  // Real wallet and contract data
+  const { isConnected, address, connect, shortAddress } = useWallet();
+  const { isCompliant, refetch: refetchCompliance } = useComplianceStatus(address as Address);
+  const { isVerified, accreditationType, refetch: refetchKYC } = useKYCStatus(address as Address);
+
   const toggleSetting = (id: string) => {
     setSettings((prev) =>
       prev.map((s) =>
@@ -120,6 +121,40 @@ export function ComplianceCenter() {
       )
     );
   };
+
+  const handleRefresh = () => {
+    refetchCompliance();
+    refetchKYC();
+  };
+
+  // Not connected view
+  if (!isConnected) {
+    return (
+      <div className="p-6 lg:p-8">
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center max-w-md"
+          >
+            <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-primary/10">
+              <Shield className="h-10 w-10 text-primary" />
+            </div>
+            <h2 className="text-2xl font-bold text-foreground mb-2">
+              Connect to View Compliance Status
+            </h2>
+            <p className="text-muted-foreground mb-6">
+              Connect your wallet to check your KYC status and manage compliance settings.
+            </p>
+            <Button variant="hero" size="lg" onClick={connect} className="gap-2">
+              <Wallet className="h-5 w-5" />
+              Connect Wallet
+            </Button>
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 lg:p-8">
@@ -144,11 +179,16 @@ export function ComplianceCenter() {
             </div>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="gap-2">
+            <Button variant="outline" size="sm" className="gap-2" onClick={handleRefresh}>
               <RefreshCw className="h-4 w-4" />
               Refresh Status
             </Button>
-            <Button variant="hero" size="sm" className="gap-2">
+            <Button 
+              variant="hero" 
+              size="sm" 
+              className="gap-2"
+              disabled={!isVerified}
+            >
               <FileText className="h-4 w-4" />
               Export Proof
             </Button>
@@ -165,19 +205,32 @@ export function ComplianceCenter() {
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ type: "spring", stiffness: 200, damping: 15 }}
-                  className="flex h-20 w-20 items-center justify-center rounded-2xl bg-gain/20"
+                  className={cn(
+                    "flex h-20 w-20 items-center justify-center rounded-2xl",
+                    isVerified ? "bg-gain/20" : "bg-warning/20"
+                  )}
                 >
-                  <ShieldCheck className="h-10 w-10 text-gain" />
+                  {isVerified ? (
+                    <ShieldCheck className="h-10 w-10 text-gain" />
+                  ) : (
+                    <AlertTriangle className="h-10 w-10 text-warning" />
+                  )}
                 </motion.div>
                 <div>
                   <div className="flex items-center gap-2">
                     <h2 className="text-2xl font-bold text-foreground">
-                      Identity Verified
+                      {isVerified ? "Identity Verified" : "Not Verified"}
                     </h2>
-                    <Badge variant="gain">ZK-Verified</Badge>
+                    {isVerified ? (
+                      <Badge variant="gain">ZK-Verified</Badge>
+                    ) : (
+                      <Badge variant="warning">Pending</Badge>
+                    )}
                   </div>
                   <p className="mt-1 text-muted-foreground">
-                    Your identity is verified using zero-knowledge proofs
+                    {isVerified 
+                      ? "Your identity is verified using zero-knowledge proofs"
+                      : "Complete KYC verification to access all features"}
                   </p>
                 </div>
               </div>
@@ -186,28 +239,44 @@ export function ComplianceCenter() {
                 <div className="rounded-xl bg-secondary/30 p-4">
                   <p className="text-xs text-muted-foreground">Verification Level</p>
                   <p className="mt-1 font-semibold text-foreground">
-                    {kycStatus.level}
+                    {accreditationType === 1 ? "Accredited Investor" : 
+                     accreditationType === 2 ? "Qualified Purchaser" :
+                     accreditationType === 3 ? "Institutional" :
+                     isVerified ? "Retail Verified" : "Unverified"}
                   </p>
                 </div>
                 <div className="rounded-xl bg-secondary/30 p-4">
-                  <p className="text-xs text-muted-foreground">Jurisdiction</p>
-                  <p className="mt-1 font-semibold text-foreground">
-                    {kycStatus.jurisdiction}
+                  <p className="text-xs text-muted-foreground">Compliance Status</p>
+                  <p className={cn(
+                    "mt-1 font-semibold",
+                    isCompliant ? "text-gain" : "text-warning"
+                  )}>
+                    {isCompliant ? "Compliant" : "Not Compliant"}
                   </p>
                 </div>
                 <div className="rounded-xl bg-secondary/30 p-4">
-                  <p className="text-xs text-muted-foreground">Verified On</p>
-                  <p className="mt-1 font-semibold text-foreground">
-                    {kycStatus.verifiedAt}
+                  <p className="text-xs text-muted-foreground">Wallet Address</p>
+                  <p className="mt-1 font-semibold text-foreground truncate text-xs">
+                    {address?.slice(0, 10)}...{address?.slice(-8)}
                   </p>
                 </div>
                 <div className="rounded-xl bg-secondary/30 p-4">
-                  <p className="text-xs text-muted-foreground">Expires</p>
+                  <p className="text-xs text-muted-foreground">Network</p>
                   <p className="mt-1 font-semibold text-foreground">
-                    {kycStatus.expiresAt}
+                    Mantle Sepolia
                   </p>
                 </div>
               </div>
+
+              {/* Start Verification Button for non-verified users */}
+              {!isVerified && (
+                <div className="mt-6">
+                  <Button variant="hero" className="w-full gap-2">
+                    <Shield className="h-4 w-4" />
+                    Start KYC Verification
+                  </Button>
+                </div>
+              )}
             </div>
 
             {/* ZK Proof */}
@@ -217,31 +286,38 @@ export function ComplianceCenter() {
                   <Fingerprint className="h-5 w-5 text-primary" />
                   <h3 className="font-semibold text-foreground">ZK Proof</h3>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowProofDetails(!showProofDetails)}
-                >
-                  {showProofDetails ? (
-                    <>
-                      <EyeOff className="mr-2 h-4 w-4" />
-                      Hide
-                    </>
-                  ) : (
-                    <>
-                      <Eye className="mr-2 h-4 w-4" />
-                      Show
-                    </>
-                  )}
-                </Button>
+                {isVerified && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowProofDetails(!showProofDetails)}
+                  >
+                    {showProofDetails ? (
+                      <>
+                        <EyeOff className="mr-2 h-4 w-4" />
+                        Hide
+                      </>
+                    ) : (
+                      <>
+                        <Eye className="mr-2 h-4 w-4" />
+                        Show
+                      </>
+                    )}
+                  </Button>
+                )}
               </div>
 
               <div className="mt-4 rounded-xl border border-border/50 bg-background/50 p-4 font-mono text-xs">
-                {showProofDetails ? (
+                {!isVerified ? (
+                  <div className="text-center text-muted-foreground py-4">
+                    <Lock className="mx-auto h-8 w-8 opacity-50" />
+                    <p className="mt-2">Complete KYC verification to generate ZK proof</p>
+                  </div>
+                ) : showProofDetails ? (
                   <div className="space-y-2">
                     <div>
-                      <span className="text-muted-foreground">proofHash: </span>
-                      <span className="text-foreground">{kycStatus.proofHash}</span>
+                      <span className="text-muted-foreground">wallet: </span>
+                      <span className="text-foreground">{address}</span>
                     </div>
                     <div>
                       <span className="text-muted-foreground">circuit: </span>
@@ -249,7 +325,11 @@ export function ComplianceCenter() {
                     </div>
                     <div>
                       <span className="text-muted-foreground">verifier: </span>
-                      <span className="text-foreground">0x4b2c...9a1f</span>
+                      <span className="text-foreground">0x9dfF21EAC0dc1D3C2a08Dc9168119fA8F2F3b56c</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">registry: </span>
+                      <span className="text-foreground">0xe05626781cF3B9a477FDE0f2Ae02129F22779209</span>
                     </div>
                     <div>
                       <span className="text-muted-foreground">onChain: </span>
@@ -265,13 +345,23 @@ export function ComplianceCenter() {
               </div>
 
               <div className="mt-4 flex gap-2">
-                <Button variant="outline" size="sm" className="flex-1 gap-2">
-                  <Key className="h-4 w-4" />
-                  Verify On-Chain
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="flex-1 gap-2"
+                  onClick={handleRefresh}
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Refresh Status
                 </Button>
-                <Button variant="outline" size="sm" className="flex-1 gap-2">
-                  <Globe className="h-4 w-4" />
-                  Share Proof
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="flex-1 gap-2"
+                  onClick={() => window.open(`https://sepolia.mantlescan.xyz/address/${address}`, '_blank')}
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  View on Explorer
                 </Button>
               </div>
             </div>

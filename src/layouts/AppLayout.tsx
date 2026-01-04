@@ -3,6 +3,8 @@ import { useState } from "react";
 import { Outlet, NavLink, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { WalletButton } from "@/components/WalletButton";
+import { useWallet } from "@/hooks/useWalletConnect";
 import {
   Zap,
   LayoutDashboard,
@@ -32,15 +34,8 @@ const navItems = [
 
 export function AppLayout() {
   const location = useLocation();
-  const [copied, setCopied] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const walletAddress = "0x7a2F8c3E91b6D4aC...4b8c";
-
-  const copyAddress = () => {
-    navigator.clipboard.writeText("0x7a2F8c3E91b6D4aC7892e41Bc53a4b8c");
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+  const { isConnected, networkName, isCorrectNetwork } = useWallet();
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -99,13 +94,16 @@ export function AppLayout() {
         <div className="border-t border-border/50 p-4">
           <div className="rounded-xl bg-secondary/30 p-4">
             <div className="flex items-center gap-2">
-              <div className="h-2 w-2 rounded-full bg-gain animate-pulse" />
+              <div className={cn(
+                "h-2 w-2 rounded-full animate-pulse",
+                isConnected && isCorrectNetwork ? "bg-gain" : "bg-muted-foreground"
+              )} />
               <span className="text-xs font-medium text-foreground">
-                Mantle Mainnet
+                {isConnected ? networkName : 'Not Connected'}
               </span>
             </div>
             <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-              <span>Block #12,847,392</span>
+              <span>{isConnected ? 'Connected' : 'Connect wallet to start'}</span>
               <span className="text-gain">~$0.001 gas</span>
             </div>
           </div>
@@ -167,27 +165,7 @@ export function AppLayout() {
             </Button>
 
             {/* Wallet */}
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={copyAddress}
-              className="flex items-center gap-3 rounded-xl border border-border/50 bg-secondary/30 px-4 py-2 transition-colors hover:bg-secondary/50"
-            >
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-gold">
-                <Wallet className="h-4 w-4 text-primary-foreground" />
-              </div>
-              <div className="text-left">
-                <p className="text-xs text-muted-foreground">Connected</p>
-                <p className="font-mono text-xs text-foreground">
-                  {walletAddress}
-                </p>
-              </div>
-              {copied ? (
-                <Check className="h-4 w-4 text-gain" />
-              ) : (
-                <Copy className="h-4 w-4 text-muted-foreground" />
-              )}
-            </motion.button>
+            <WalletButton variant="compact" />
           </div>
         </header>
 

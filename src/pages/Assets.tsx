@@ -6,12 +6,17 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { TokenizationWizard } from "@/components/TokenizationWizard";
+import { VaultModal } from "@/components/VaultModal";
+import { useWallet } from "@/hooks/useWalletConnect";
+import { useVaultData, useVaultUserData, useTokenBalance, useComplianceStatus } from "@/hooks/useContracts";
+import { type Address } from 'viem';
 import {
   Search,
   Filter,
   Grid3X3,
   List,
   ArrowUpRight,
+  ArrowDownRight,
   Shield,
   TrendingUp,
   Building2,
@@ -23,6 +28,7 @@ import {
   Info,
   ChevronRight,
   Plus,
+  Wallet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { RiskRadar } from "@/components/charts/RiskRadar";
@@ -201,6 +207,25 @@ export function Assets() {
   const [selectedAsset, setSelectedAsset] = useState<typeof assets[0] | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [vaultModalOpen, setVaultModalOpen] = useState(false);
+  const [vaultModalMode, setVaultModalMode] = useState<'deposit' | 'withdraw'>('deposit');
+
+  // Real wallet and contract data
+  const { isConnected, address, connect } = useWallet();
+  const { totalAssets, totalSupply, vaultName, vaultSymbol } = useVaultData();
+  const { shares, assetValue } = useVaultUserData(address as Address);
+  const { balance: tokenBalance } = useTokenBalance(address as Address);
+  const { isCompliant } = useComplianceStatus(address as Address);
+
+  const openDepositModal = () => {
+    setVaultModalMode('deposit');
+    setVaultModalOpen(true);
+  };
+
+  const openWithdrawModal = () => {
+    setVaultModalMode('withdraw');
+    setVaultModalOpen(true);
+  };
 
   const filteredAssets = assets.filter((asset) => {
     if (searchQuery && !asset.name.toLowerCase().includes(searchQuery.toLowerCase())) {
@@ -217,11 +242,83 @@ export function Assets() {
 
   return (
     <div className="p-6 lg:p-8">
+      {/* Vault Modal */}
+      <VaultModal
+        isOpen={vaultModalOpen}
+        onClose={() => setVaultModalOpen(false)}
+        mode={vaultModalMode}
+        vaultName={vaultName}
+      />
+      
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="space-y-6"
       >
+        {/* Your Portfolio Section - Only show when connected */}
+        {isConnected && (
+          <Card variant="glass" className="border-primary/20">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center justify-between">
+                <span>Your Portfolio</span>
+                <div className="flex gap-2">
+                  <Button variant="hero" size="sm" onClick={openDepositModal} className="gap-1">
+                    <ArrowUpRight className="h-4 w-4" />
+                    Deposit
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={openWithdrawModal} className="gap-1">
+                    <ArrowDownRight className="h-4 w-4" />
+                    Withdraw
+                  </Button>
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 sm:grid-cols-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">MRDL Balance</p>
+                  <p className="text-xl font-bold text-foreground">{parseFloat(tokenBalance).toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Vault Shares ({vaultSymbol})</p>
+                  <p className="text-xl font-bold text-foreground">{parseFloat(shares).toFixed(4)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Value in Vault</p>
+                  <p className="text-xl font-bold text-primary">{parseFloat(assetValue).toFixed(2)} MRDL</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Compliance Status</p>
+                  {isCompliant ? (
+                    <Badge variant="gain" className="mt-1">
+                      <Shield className="h-3 w-3 mr-1" />
+                      Verified
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="mt-1 text-yellow-500 border-yellow-500/50">
+                      Pending KYC
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Connect Wallet Prompt */}
+        {!isConnected && (
+          <Card variant="glass" className="border-primary/20">
+            <CardContent className="p-6 text-center">
+              <Wallet className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <h3 className="font-semibold text-lg mb-2">Connect Wallet to Invest</h3>
+              <p className="text-muted-foreground text-sm mb-4">
+                Connect your wallet to deposit, withdraw, and track your investments
+              </p>
+              <Button variant="hero" onClick={connect}>Connect Wallet</Button>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>

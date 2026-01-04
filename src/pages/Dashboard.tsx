@@ -4,6 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
+import { useWallet } from "@/hooks/useWalletConnect";
+import { useTokenBalance, useVaultData, useVaultUserData, useComplianceStatus } from "@/hooks/useContracts";
+import { type Address } from 'viem';
 import {
   ArrowUpRight,
   ArrowDownRight,
@@ -18,30 +21,48 @@ import {
   Zap,
   Clock,
   BarChart3,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PortfolioChart } from "@/components/charts/PortfolioChart";
 import { LiveTransactionFeed } from "@/components/LiveTransactionFeed";
 import { RiskGauge } from "@/components/RiskGauge";
+import { useNavigate } from "react-router-dom";
 
-// Simulated real-time data
-const useRealTimePortfolio = () => {
+// Hook for real-time portfolio data combining on-chain and simulated data
+const useRealTimePortfolio = (vaultAssetValue: string, tokenBalance: string) => {
   const [data, setData] = useState({
-    totalValue: 1247832.45,
-    dailyPnL: 3247.89,
-    dailyPnLPercent: 0.26,
-    weeklyPnL: 12847.23,
-    weeklyPnLPercent: 1.04,
+    totalValue: 0,
+    dailyPnL: 0,
+    dailyPnLPercent: 0,
+    weeklyPnL: 0,
+    weeklyPnLPercent: 0,
     totalYield: 8.72,
     riskScore: 42,
   });
 
   useEffect(() => {
+    // Combine vault value + token balance for total portfolio
+    const vaultVal = parseFloat(vaultAssetValue) || 0;
+    const tokenBal = parseFloat(tokenBalance) || 0;
+    const totalPortfolio = vaultVal + tokenBal;
+    
+    setData((prev) => ({
+      ...prev,
+      totalValue: totalPortfolio,
+      dailyPnL: totalPortfolio * 0.0026, // Simulated 0.26% daily gain
+      dailyPnLPercent: 0.26,
+      weeklyPnL: totalPortfolio * 0.0104,
+      weeklyPnLPercent: 1.04,
+    }));
+  }, [vaultAssetValue, tokenBalance]);
+
+  // Simulate real-time updates for engagement
+  useEffect(() => {
     const interval = setInterval(() => {
       setData((prev) => ({
         ...prev,
-        totalValue: prev.totalValue + (Math.random() - 0.48) * 100,
-        dailyPnL: prev.dailyPnL + (Math.random() - 0.48) * 10,
+        dailyPnL: prev.dailyPnL + (Math.random() - 0.48) * (prev.totalValue * 0.0001),
         dailyPnLPercent: prev.dailyPnLPercent + (Math.random() - 0.48) * 0.01,
       }));
     }, 3000);
@@ -51,48 +72,40 @@ const useRealTimePortfolio = () => {
   return data;
 };
 
-const positions = [
-  {
-    id: 1,
-    asset: "US Treasury Bonds",
-    symbol: "USTB",
-    value: 561524.60,
-    allocation: 45,
-    apy: 5.24,
-    change: 0.12,
-    status: "active",
-  },
-  {
-    id: 2,
-    asset: "Real Estate Fund I",
-    symbol: "REFI",
-    value: 311958.11,
-    allocation: 25,
-    apy: 12.45,
-    change: 0.34,
-    status: "active",
-  },
-  {
-    id: 3,
-    asset: "Invoice Factoring Pool",
-    symbol: "INVP",
-    value: 187174.87,
-    allocation: 15,
-    apy: 18.72,
-    change: -0.08,
-    status: "warning",
-  },
-  {
-    id: 4,
-    asset: "Carbon Credits Vault",
-    symbol: "CCRV",
-    value: 187174.87,
-    allocation: 15,
-    apy: 8.91,
-    change: 0.56,
-    status: "active",
-  },
-];
+// Generate positions dynamically based on real data
+const usePositions = (shares: string, assetValue: string, tokenBalance: string, vaultName: string, vaultSymbol: string) => {
+  const sharesNum = parseFloat(shares) || 0;
+  const assetVal = parseFloat(assetValue) || 0;
+  const tokenBal = parseFloat(tokenBalance) || 0;
+  const total = assetVal + tokenBal;
+  
+  return [
+    {
+      id: 1,
+      asset: vaultName || "Meridian US Treasury Vault",
+      symbol: vaultSymbol || "mUSTB",
+      value: assetVal,
+      shares: sharesNum,
+      allocation: total > 0 ? Math.round((assetVal / total) * 100) : 0,
+      apy: 5.24,
+      change: 0.12,
+      status: sharesNum > 0 ? "active" : "inactive",
+      isReal: true,
+    },
+    {
+      id: 2,
+      asset: "MRDL Token Balance",
+      symbol: "MRDL",
+      value: tokenBal,
+      shares: tokenBal,
+      allocation: total > 0 ? Math.round((tokenBal / total) * 100) : 0,
+      apy: 0,
+      change: 0,
+      status: tokenBal > 0 ? "active" : "inactive",
+      isReal: true,
+    },
+  ].filter(p => p.value > 0);
+};
 
 const quickActions = [
   { icon: ArrowUpRight, label: "Deposit", variant: "hero" as const },
@@ -117,7 +130,47 @@ const itemVariants = {
 };
 
 export function Dashboard() {
-  const portfolio = useRealTimePortfolio();
+  const navigate = useNavigate();
+  const { isConnected, address, connect, shortAddress } = useWallet();
+  
+  // Real contract data
+  const { balance: tokenBalance } = useTokenBalance(address as Address);
+  const { totalAssets, totalSupply, vaultName, vaultSymbol } = useVaultData();
+  const { shares, assetValue } = useVaultUserData(address as Address);
+  const { isCompliant } = useComplianceStatus(address as Address);
+  
+  // Combined portfolio data
+  const portfolio = useRealTimePortfolio(assetValue, tokenBalance);
+  
+  // Generate positions from real data
+  const positions = usePositions(shares, assetValue, tokenBalance, vaultName, vaultSymbol);
+  
+  // Show connect prompt if not connected
+  if (!isConnected) {
+    return (
+      <div className="flex min-h-[80vh] items-center justify-center p-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center"
+        >
+          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-gold">
+            <Wallet className="h-10 w-10 text-primary-foreground" />
+          </div>
+          <h2 className="text-2xl font-bold text-foreground mb-2">
+            Connect Your Wallet
+          </h2>
+          <p className="text-muted-foreground mb-6 max-w-md">
+            Connect your wallet to view your portfolio, deposit to vaults, and start earning yield on RWA investments.
+          </p>
+          <Button variant="hero" size="lg" onClick={connect} className="gap-2">
+            <Wallet className="h-5 w-5" />
+            Connect Wallet
+          </Button>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 lg:p-8">
@@ -134,24 +187,55 @@ export function Dashboard() {
         >
           <div>
             <h1 className="text-2xl font-bold text-foreground">
-              Welcome back, Investor
+              Welcome back, {shortAddress || 'Investor'}
             </h1>
-            <p className="text-muted-foreground">
-              Here's your portfolio performance at a glance
-            </p>
+            <div className="flex items-center gap-2 mt-1">
+              <p className="text-muted-foreground">
+                Here's your portfolio performance at a glance
+              </p>
+              {isCompliant ? (
+                <Badge variant="gain" className="gap-1">
+                  <Shield className="h-3 w-3" />
+                  KYC Verified
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="gap-1 text-yellow-500 border-yellow-500/50">
+                  <AlertTriangle className="h-3 w-3" />
+                  Complete KYC
+                </Badge>
+              )}
+            </div>
           </div>
           <div className="flex gap-2">
-            {quickActions.map((action) => (
+            <Button
+              variant="hero"
+              size="sm"
+              className="gap-2"
+              onClick={() => navigate('/app/assets')}
+            >
+              <ArrowUpRight className="h-4 w-4" />
+              <span className="hidden sm:inline">Deposit</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={() => navigate('/app/assets')}
+            >
+              <ArrowDownRight className="h-4 w-4" />
+              <span className="hidden sm:inline">Withdraw</span>
+            </Button>
+            {!isCompliant && (
               <Button
-                key={action.label}
-                variant={action.variant}
+                variant="outline"
                 size="sm"
                 className="gap-2"
+                onClick={() => navigate('/app/compliance')}
               >
-                <action.icon className="h-4 w-4" />
-                <span className="hidden sm:inline">{action.label}</span>
+                <Shield className="h-4 w-4" />
+                <span className="hidden sm:inline">Verify KYC</span>
               </Button>
-            ))}
+            )}
           </div>
         </motion.div>
 
