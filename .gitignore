@@ -22,3 +22,22 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Hardhat / Smart Contracts
+cache/
+artifacts/
+typechain-types/
+deployments/
+coverage/
+coverage.json
+
+# Environment - NEVER COMMIT
+.env
+.env.local
+.env.*.local
+
+# Sensitive files
+*.pem
+*.key
+private-key*
+secret*
