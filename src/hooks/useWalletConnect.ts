@@ -6,6 +6,7 @@
 import { useAccount, useConnect, useDisconnect, useChainId, useSwitchChain, useBalance } from 'wagmi'
 import { useAppKit } from '@reown/appkit/react'
 import { useCallback, useMemo } from 'react'
+import { formatEther } from 'viem'
 import { mantleTestnet, mantleMainnet } from '@/lib/web3Config'
 
 export interface WalletState {
@@ -53,7 +54,7 @@ export function useWallet(): UseWalletReturn {
   // Format balance
   const balance = useMemo(() => {
     if (!balanceData) return '0'
-    return Number(balanceData.formatted).toFixed(4)
+    return Number(formatEther(balanceData.value)).toFixed(4)
   }, [balanceData])
 
   // Short address for display

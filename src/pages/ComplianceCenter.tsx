@@ -1,12 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
+import { KYCVerificationWizard } from "@/components/KYCVerificationWizard";
 import { useWallet } from "@/hooks/useWalletConnect";
 import { useComplianceStatus, useKYCStatus } from "@/hooks/useContracts";
+import { useProfile, useKYCDocuments } from "@/hooks/useSupabase";
 import { type Address } from 'viem';
 import {
   Shield,
@@ -108,11 +110,49 @@ const jurisdictions = [
 export function ComplianceCenter() {
   const [settings, setSettings] = useState(disclosureSettings);
   const [showProofDetails, setShowProofDetails] = useState(false);
+  const [kycWizardOpen, setKycWizardOpen] = useState(false);
 
   // Real wallet and contract data
   const { isConnected, address, connect, shortAddress } = useWallet();
   const { isCompliant, refetch: refetchCompliance } = useComplianceStatus(address as Address);
   const { isVerified, accreditationType, refetch: refetchKYC } = useKYCStatus(address as Address);
+
+  // Supabase data
+  const { profile, createProfile, updateProfile } = useProfile(address);
+  const { documents, submitDocument, isLoading: docsLoading, refetch: refetchDocs } = useKYCDocuments(address);
+
+  // Merge on-chain and off-chain document status
+  const mergedDocuments = useMemo(() => {
+    const baseDocuments = [...complianceDocuments];
+    
+    // Update status from Supabase if available
+    if (documents.length > 0) {
+      return baseDocuments.map(doc => {
+        const supabaseDoc = documents.find(d => 
+          d.document_type === doc.name.toLowerCase().replace(' ', '_').replace(' verification', '').replace(' letter', '')
+        );
+        if (supabaseDoc) {
+          return {
+            ...doc,
+            status: supabaseDoc.status === 'approved' ? 'verified' : supabaseDoc.status,
+            date: supabaseDoc.status === 'approved' && supabaseDoc.reviewed_at 
+              ? new Date(supabaseDoc.reviewed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+              : supabaseDoc.status === 'pending' ? 'Under Review' : doc.date,
+          };
+        }
+        return doc;
+      });
+    }
+    
+    return baseDocuments;
+  }, [documents]);
+
+  // Create profile if doesn't exist
+  useEffect(() => {
+    if (address && !profile && isConnected) {
+      createProfile(address);
+    }
+  }, [address, profile, isConnected, createProfile]);
 
   const toggleSetting = (id: string) => {
     setSettings((prev) =>
@@ -125,6 +165,17 @@ export function ComplianceCenter() {
   const handleRefresh = () => {
     refetchCompliance();
     refetchKYC();
+    refetchDocs();
+  };
+
+  const handleUploadDocument = async (docType: 'identity' | 'address' | 'accreditation' | 'tax') => {
+    // In production, this would open a file picker and upload to storage
+    // For now, we'll simulate adding a pending document
+    await submitDocument({
+      document_type: docType,
+      document_name: `${docType}_document_${Date.now()}.pdf`,
+      file_url: null, // Would be storage URL in production
+    });
   };
 
   // Not connected view
@@ -158,6 +209,12 @@ export function ComplianceCenter() {
 
   return (
     <div className="p-6 lg:p-8">
+      {/* KYC Verification Wizard */}
+      <KYCVerificationWizard
+        open={kycWizardOpen}
+        onOpenChange={setKycWizardOpen}
+      />
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -224,7 +281,7 @@ export function ComplianceCenter() {
                     {isVerified ? (
                       <Badge variant="gain">ZK-Verified</Badge>
                     ) : (
-                      <Badge variant="warning">Pending</Badge>
+                      <Badge variant="destructive">Pending</Badge>
                     )}
                   </div>
                   <p className="mt-1 text-muted-foreground">
@@ -271,7 +328,11 @@ export function ComplianceCenter() {
               {/* Start Verification Button for non-verified users */}
               {!isVerified && (
                 <div className="mt-6">
-                  <Button variant="hero" className="w-full gap-2">
+                  <Button 
+                    variant="hero" 
+                    className="w-full gap-2"
+                    onClick={() => setKycWizardOpen(true)}
+                  >
                     <Shield className="h-4 w-4" />
                     Start KYC Verification
                   </Button>
@@ -443,7 +504,7 @@ export function ComplianceCenter() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {complianceDocuments.map((doc, i) => (
+                  {mergedDocuments.map((doc, i) => (
                     <motion.div
                       key={doc.name}
                       initial={{ opacity: 0, y: 10 }}
@@ -460,6 +521,8 @@ export function ComplianceCenter() {
                       </div>
                       {doc.status === "verified" ? (
                         <CheckCircle2 className="h-5 w-5 text-gain" />
+                      ) : doc.status === "pending" ? (
+                        <RefreshCw className="h-5 w-5 text-yellow-500 animate-spin" />
                       ) : (
                         <AlertTriangle className="h-5 w-5 text-yield" />
                       )}

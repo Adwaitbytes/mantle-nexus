@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { WalletButton } from "@/components/WalletButton";
 import { useWallet } from "@/hooks/useWalletConnect";
+import { useNotifications } from "@/hooks/useSupabase";
 import {
   Zap,
   LayoutDashboard,
@@ -35,7 +36,8 @@ const navItems = [
 export function AppLayout() {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { isConnected, networkName, isCorrectNetwork } = useWallet();
+  const { isConnected, networkName, isCorrectNetwork, address } = useWallet();
+  const { unreadCount } = useNotifications(address);
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -110,7 +112,13 @@ export function AppLayout() {
         </div>
 
         {/* Settings */}
-        <div className="border-t border-border/50 p-4">
+        <div className="border-t border-border/50 p-4 space-y-2">
+          <Link to="/admin">
+            <Button variant="ghost" className="w-full justify-start gap-3 text-primary hover:bg-primary/10">
+              <Shield className="h-4 w-4" />
+              Admin Panel
+            </Button>
+          </Link>
           <Button variant="ghost" className="w-full justify-start gap-3">
             <Settings className="h-4 w-4" />
             Settings
@@ -161,7 +169,11 @@ export function AppLayout() {
             {/* Notifications */}
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="h-5 w-5" />
-              <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-risk" />
+              {unreadCount > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-risk text-xs text-white font-medium">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
             </Button>
 
             {/* Wallet */}

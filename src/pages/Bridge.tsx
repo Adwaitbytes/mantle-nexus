@@ -5,6 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
+import { useWallet } from "@/hooks/useWalletConnect";
+import { useTokenBalance } from "@/hooks/useContracts";
+import { type Address } from 'viem';
 import {
   ArrowLeftRight,
   ArrowDown,
@@ -86,9 +89,16 @@ export function Bridge() {
   const [amount, setAmount] = useState("");
   const [direction, setDirection] = useState<"deposit" | "withdraw">("deposit");
   const [isProcessing, setIsProcessing] = useState(false);
+  
+  const { isConnected, address, connect, balance } = useWallet();
+  const { balance: mrdlBalance } = useTokenBalance(address as Address);
 
   const sourceNetwork = direction === "deposit" ? networks.ethereum : networks.mantle;
   const targetNetwork = direction === "deposit" ? networks.mantle : networks.ethereum;
+
+  // Use real MNT balance from wallet
+  const mantleBalance = balance ? parseFloat(balance) : 0;
+  networks.mantle.balance = mantleBalance;
 
   const gasEstimate = direction === "deposit" ? 0.002 : 0.001;
   const gasSavings = direction === "deposit" ? 95 : 0;
@@ -275,25 +285,37 @@ export function Bridge() {
               </div>
 
               {/* Bridge Button */}
-              <Button
-                variant="hero"
-                size="xl"
-                className="w-full gap-2"
-                onClick={handleBridge}
-                disabled={!amount || isProcessing}
-              >
-                {isProcessing ? (
-                  <>
-                    <RefreshCw className="h-5 w-5 animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <ArrowLeftRight className="h-5 w-5" />
-                    Bridge to {targetNetwork.name}
-                  </>
-                )}
-              </Button>
+              {!isConnected ? (
+                <Button
+                  variant="hero"
+                  size="xl"
+                  className="w-full gap-2"
+                  onClick={connect}
+                >
+                  <Wallet className="h-5 w-5" />
+                  Connect Wallet to Bridge
+                </Button>
+              ) : (
+                <Button
+                  variant="hero"
+                  size="xl"
+                  className="w-full gap-2"
+                  onClick={handleBridge}
+                  disabled={!amount || isProcessing}
+                >
+                  {isProcessing ? (
+                    <>
+                      <RefreshCw className="h-5 w-5 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <ArrowLeftRight className="h-5 w-5" />
+                      Bridge to {targetNetwork.name}
+                    </>
+                  )}
+                </Button>
+              )}
             </CardContent>
           </Card>
 

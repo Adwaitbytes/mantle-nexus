@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { TokenizationWizard } from "@/components/TokenizationWizard";
 import { VaultModal } from "@/components/VaultModal";
 import { useWallet } from "@/hooks/useWalletConnect";
 import { useVaultData, useVaultUserData, useTokenBalance, useComplianceStatus } from "@/hooks/useContracts";
+import { useTransactions, useWatchlist } from "@/hooks/useSupabase";
 import { type Address } from 'viem';
 import {
   Search,
@@ -29,6 +30,11 @@ import {
   ChevronRight,
   Plus,
   Wallet,
+  Clock,
+  CheckCircle,
+  XCircle,
+  History,
+  StarOff,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { RiskRadar } from "@/components/charts/RiskRadar";
@@ -217,6 +223,10 @@ export function Assets() {
   const { balance: tokenBalance } = useTokenBalance(address as Address);
   const { isCompliant } = useComplianceStatus(address as Address);
 
+  // Supabase data
+  const { transactions, isLoading: txLoading } = useTransactions(address, 10);
+  const { watchlist, addToWatchlist, removeFromWatchlist, isWatched } = useWatchlist(address);
+
   const openDepositModal = () => {
     setVaultModalMode('deposit');
     setVaultModalOpen(true);
@@ -300,6 +310,48 @@ export function Assets() {
                     </Badge>
                   )}
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Recent Transactions - Only show when connected */}
+        {isConnected && transactions.length > 0 && (
+          <Card variant="glass">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <History className="h-5 w-5" />
+                Recent Transactions
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {transactions.slice(0, 5).map((tx) => (
+                  <div key={tx.id} className="flex items-center justify-between p-2 rounded-lg bg-background/50 hover:bg-background/80 transition-colors">
+                    <div className="flex items-center gap-3">
+                      {tx.status === 'confirmed' && <CheckCircle className="h-4 w-4 text-gain" />}
+                      {tx.status === 'pending' && <Clock className="h-4 w-4 text-yellow-500 animate-pulse" />}
+                      {tx.status === 'failed' && <XCircle className="h-4 w-4 text-loss" />}
+                      <div>
+                        <p className="text-sm font-medium capitalize">{tx.tx_type}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(tx.created_at).toLocaleDateString()} • {tx.asset_symbol}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-mono">{parseFloat(tx.amount).toFixed(4)}</p>
+                      <a 
+                        href={`https://sepolia.mantlescan.xyz/tx/${tx.tx_hash}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-primary hover:underline"
+                      >
+                        View on Explorer
+                      </a>
+                    </div>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
@@ -458,7 +510,35 @@ export function Assets() {
                         <p className="text-xs text-muted-foreground">{asset.type}</p>
                       </div>
                     </div>
-                    <Badge variant="glass">{asset.symbol}</Badge>
+                    <div className="flex items-center gap-2">
+                      {isConnected && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const assetAddress = `0x${asset.id.toString(16).padStart(40, '0')}`;
+                            if (isWatched(assetAddress)) {
+                              removeFromWatchlist(assetAddress);
+                            } else {
+                              addToWatchlist({
+                                asset_address: assetAddress,
+                                asset_symbol: asset.symbol,
+                                asset_name: asset.name,
+                              });
+                            }
+                          }}
+                        >
+                          {isWatched(`0x${asset.id.toString(16).padStart(40, '0')}`) ? (
+                            <Star className="h-4 w-4 fill-yellow-500 text-yellow-500" />
+                          ) : (
+                            <StarOff className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </Button>
+                      )}
+                      <Badge variant="glass">{asset.symbol}</Badge>
+                    </div>
                   </div>
 
                   {/* Description */}

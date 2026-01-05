@@ -12,6 +12,7 @@ import { Assets } from "./pages/Assets";
 import { RiskCenter } from "./pages/RiskCenter";
 import { ComplianceCenter } from "./pages/ComplianceCenter";
 import { Bridge } from "./pages/Bridge";
+import { Admin } from "./pages/Admin";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +25,8 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
+            {/* Admin Route */}
+            <Route path="/admin" element={<Admin />} />
             {/* App Dashboard Routes */}
             <Route path="/app" element={<AppLayout />}>
               <Route index element={<Dashboard />} />

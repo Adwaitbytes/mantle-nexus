@@ -3,7 +3,7 @@
  * Provides read/write functions for all Meridian contracts
  */
 
-import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
+import { useReadContract, useWriteContract, useWaitForTransactionReceipt, useAccount } from 'wagmi'
 import { parseEther, formatEther, type Address } from 'viem'
 import { useMemo } from 'react'
 import { CONTRACT_ADDRESSES, ABIS } from '@/lib/contracts'
@@ -57,16 +57,19 @@ export function useTokenAllowance(owner: Address | undefined, spender: Address) 
 }
 
 export function useTokenApprove() {
-  const { writeContract, data: hash, isPending, error } = useWriteContract()
+  const { address: userAddress } = useAccount()
+  const { writeContractAsync, data: hash, isPending, error } = useWriteContract()
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash })
 
   const approve = async (spender: Address, amount: string) => {
-    writeContract({
+    if (!userAddress) throw new Error('No wallet connected')
+    await writeContractAsync({
       address: addresses.MeridianToken as Address,
-      abi: ABIS.MeridianToken,
+      abi: ABIS.MeridianToken as any,
       functionName: 'approve',
       args: [spender, parseEther(amount)],
-      chainId: mantleTestnet.id,
+      account: userAddress,
+      chain: { id: mantleTestnet.id } as any,
     })
   }
 
@@ -171,16 +174,19 @@ export function useVaultUserData(address: Address | undefined) {
 }
 
 export function useVaultDeposit() {
-  const { writeContract, data: hash, isPending, error } = useWriteContract()
+  const { address: userAddress } = useAccount()
+  const { writeContractAsync, data: hash, isPending, error } = useWriteContract()
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash })
 
   const deposit = async (amount: string, receiver: Address) => {
-    writeContract({
+    if (!userAddress) throw new Error('No wallet connected')
+    await writeContractAsync({
       address: addresses.MeridianVault as Address,
-      abi: ABIS.MeridianVault,
+      abi: ABIS.MeridianVault as any,
       functionName: 'deposit',
       args: [parseEther(amount), receiver],
-      chainId: mantleTestnet.id,
+      account: userAddress,
+      chain: { id: mantleTestnet.id } as any,
     })
   }
 
@@ -194,26 +200,31 @@ export function useVaultDeposit() {
 }
 
 export function useVaultWithdraw() {
-  const { writeContract, data: hash, isPending, error } = useWriteContract()
+  const { address: userAddress } = useAccount()
+  const { writeContractAsync, data: hash, isPending, error } = useWriteContract()
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash })
 
   const withdraw = async (amount: string, receiver: Address, owner: Address) => {
-    writeContract({
+    if (!userAddress) throw new Error('No wallet connected')
+    await writeContractAsync({
       address: addresses.MeridianVault as Address,
-      abi: ABIS.MeridianVault,
+      abi: ABIS.MeridianVault as any,
       functionName: 'withdraw',
       args: [parseEther(amount), receiver, owner],
-      chainId: mantleTestnet.id,
+      account: userAddress,
+      chain: { id: mantleTestnet.id } as any,
     })
   }
 
   const redeem = async (shares: string, receiver: Address, owner: Address) => {
-    writeContract({
+    if (!userAddress) throw new Error('No wallet connected')
+    await writeContractAsync({
       address: addresses.MeridianVault as Address,
-      abi: ABIS.MeridianVault,
+      abi: ABIS.MeridianVault as any,
       functionName: 'redeem',
       args: [parseEther(shares), receiver, owner],
-      chainId: mantleTestnet.id,
+      account: userAddress,
+      chain: { id: mantleTestnet.id } as any,
     })
   }
 

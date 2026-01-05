@@ -19,6 +19,7 @@ import {
   useVaultUserData,
   useComplianceStatus,
 } from '@/hooks/useContracts'
+import { useTransactions } from '@/hooks/useSupabase'
 import { CONTRACT_ADDRESSES } from '@/lib/contracts'
 import { type Address } from 'viem'
 import {
@@ -53,11 +54,55 @@ export function VaultModal({ isOpen, onClose, mode, vaultName }: VaultModalProps
     CONTRACT_ADDRESSES.testnet.MeridianVault as Address
   )
   
+  // Supabase transaction tracking
+  const { addTransaction, updateTransactionStatus } = useTransactions(address)
+  
   const { approve, isApproving, isSuccess: approveSuccess } = useTokenApprove()
   const { deposit, isDepositing, isSuccess: depositSuccess, hash: depositHash } = useVaultDeposit()
   const { redeem, isWithdrawing, isSuccess: withdrawSuccess, hash: withdrawHash } = useVaultWithdraw()
 
   const vaultAddress = CONTRACT_ADDRESSES.testnet.MeridianVault as Address
+
+  // Track transaction in Supabase when hash is available
+  useEffect(() => {
+    if (depositHash) {
+      addTransaction({
+        tx_hash: depositHash,
+        tx_type: 'deposit',
+        vault_address: vaultAddress,
+        amount: amount,
+        asset_symbol: 'MRDL',
+        status: 'pending',
+      })
+    }
+  }, [depositHash, addTransaction, amount, vaultAddress])
+
+  useEffect(() => {
+    if (withdrawHash) {
+      addTransaction({
+        tx_hash: withdrawHash,
+        tx_type: 'redeem',
+        vault_address: vaultAddress,
+        amount: shares,
+        shares: shares,
+        asset_symbol: 'mUSTB',
+        status: 'pending',
+      })
+    }
+  }, [withdrawHash, addTransaction, shares, vaultAddress])
+
+  // Update transaction status on success
+  useEffect(() => {
+    if (depositSuccess && depositHash) {
+      updateTransactionStatus(depositHash, 'confirmed')
+    }
+  }, [depositSuccess, depositHash, updateTransactionStatus])
+
+  useEffect(() => {
+    if (withdrawSuccess && withdrawHash) {
+      updateTransactionStatus(withdrawHash, 'confirmed')
+    }
+  }, [withdrawSuccess, withdrawHash, updateTransactionStatus])
 
   // Reset on open
   useEffect(() => {
@@ -95,17 +140,19 @@ export function VaultModal({ isOpen, onClose, mode, vaultName }: VaultModalProps
   const handleAction = async () => {
     if (!address || !amount) return
 
+    const userAddress = address as Address
+    
     if (mode === 'deposit') {
       if (needsApproval) {
         setStep('approve')
         approve(vaultAddress, amount)
       } else {
         setStep('confirm')
-        deposit(amount, address)
+        deposit(amount, userAddress)
       }
     } else {
       setStep('confirm')
-      redeem(shares, address, address)
+      redeem(shares, userAddress, userAddress)
     }
   }
 
@@ -115,7 +162,7 @@ export function VaultModal({ isOpen, onClose, mode, vaultName }: VaultModalProps
 
   const handleDeposit = () => {
     if (!address) return
-    deposit(amount, address)
+    deposit(amount, address as Address)
   }
 
   if (!isOpen) return null

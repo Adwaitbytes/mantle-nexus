@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { useWallet } from "@/hooks/useWalletConnect";
 import { useTokenBalance, useVaultData, useVaultUserData, useComplianceStatus } from "@/hooks/useContracts";
+import { useUserData, usePortfolioHistory } from "@/hooks/useSupabase";
 import { type Address } from 'viem';
 import {
   ArrowUpRight,
@@ -22,6 +23,7 @@ import {
   Clock,
   BarChart3,
   Shield,
+  Bell,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PortfolioChart } from "@/components/charts/PortfolioChart";
@@ -139,11 +141,29 @@ export function Dashboard() {
   const { shares, assetValue } = useVaultUserData(address as Address);
   const { isCompliant } = useComplianceStatus(address as Address);
   
+  // Supabase user data
+  const { profile, transactions, notifications, unreadNotifications, ensureProfile } = useUserData(address);
+  const { saveSnapshot } = usePortfolioHistory(address);
+  
   // Combined portfolio data
   const portfolio = useRealTimePortfolio(assetValue, tokenBalance);
   
   // Generate positions from real data
   const positions = usePositions(shares, assetValue, tokenBalance, vaultName, vaultSymbol);
+  
+  // Create or fetch user profile on connect
+  useEffect(() => {
+    if (isConnected && address && !profile) {
+      ensureProfile();
+    }
+  }, [isConnected, address, profile, ensureProfile]);
+  
+  // Save portfolio snapshot daily
+  useEffect(() => {
+    if (isConnected && portfolio.totalValue > 0) {
+      saveSnapshot(portfolio.totalValue.toString(), positions);
+    }
+  }, [isConnected, portfolio.totalValue, positions, saveSnapshot]);
   
   // Show connect prompt if not connected
   if (!isConnected) {

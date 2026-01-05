@@ -5,11 +5,12 @@
 
 import { createAppKit } from '@reown/appkit/react'
 import { WagmiAdapter } from '@reown/appkit-adapter-wagmi'
+import type { AppKitNetwork } from '@reown/appkit/networks'
 import { http } from 'viem'
 import { cookieStorage, createStorage } from 'wagmi'
 
-// WalletConnect Project ID
-const projectId = '571b09c21b6975ccd5d0bbcf8cb322e1'
+// WalletConnect Project ID - from environment variable
+const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || '571b09c21b6975ccd5d0bbcf8cb322e1'
 
 // Mantle Networks Configuration
 export const mantleTestnet = {
@@ -46,8 +47,8 @@ export const mantleMainnet = {
   testnet: false,
 } as const
 
-// Networks array
-const networks = [mantleTestnet, mantleMainnet] as const
+// Networks array - cast to mutable for AppKit compatibility
+const networks: [AppKitNetwork, ...AppKitNetwork[]] = [mantleTestnet, mantleMainnet]
 
 // Wagmi Adapter
 export const wagmiAdapter = new WagmiAdapter({
