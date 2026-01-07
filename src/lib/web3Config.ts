@@ -12,6 +12,9 @@ import { cookieStorage, createStorage } from 'wagmi'
 // WalletConnect Project ID - from environment variable
 const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || '571b09c21b6975ccd5d0bbcf8cb322e1'
 
+console.log("🔧 Initializing Web3 Config...");
+console.log("📡 Project ID:", projectId ? "✅ Set" : "❌ Missing");
+
 // Mantle Networks Configuration
 export const mantleTestnet = {
   id: 5003,
@@ -51,6 +54,7 @@ export const mantleMainnet = {
 const networks: [AppKitNetwork, ...AppKitNetwork[]] = [mantleTestnet, mantleMainnet]
 
 // Wagmi Adapter
+console.log("🔌 Creating Wagmi Adapter...");
 export const wagmiAdapter = new WagmiAdapter({
   storage: createStorage({
     storage: cookieStorage,
@@ -63,6 +67,7 @@ export const wagmiAdapter = new WagmiAdapter({
     [mantleMainnet.id]: http('https://rpc.mantle.xyz'),
   },
 })
+console.log("✅ Wagmi Adapter created");
 
 // Metadata for WalletConnect
 const metadata = {
@@ -73,6 +78,7 @@ const metadata = {
 }
 
 // Create AppKit modal
+console.log("🎨 Creating AppKit...");
 export const appKit = createAppKit({
   adapters: [wagmiAdapter],
   projectId,
@@ -90,6 +96,8 @@ export const appKit = createAppKit({
     '--w3m-border-radius-master': '12px',
   },
 })
+console.log("✅ AppKit created successfully");
 
 // Export config for wagmi provider
 export const wagmiConfig = wagmiAdapter.wagmiConfig
+console.log("✅ Web3 Config initialized successfully");
