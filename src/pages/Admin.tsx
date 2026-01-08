@@ -85,12 +85,20 @@ export function Admin() {
   const [kycFilter, setKycFilter] = useState<"all" | "pending" | "approved" | "rejected">("pending");
   const [txFilter, setTxFilter] = useState<"all" | "pending" | "confirmed" | "failed">("all");
 
-  // Check if user is admin
+  // Admin check: can be disabled via VITE_ADMIN_DISABLED=true for development
+  const ADMIN_DISABLED = import.meta.env.VITE_ADMIN_DISABLED === "true";
   const isAdmin = useMemo(() => {
+    if (ADMIN_DISABLED) return Boolean(isConnected);
     if (!address) return false;
     const userAddress = address.toLowerCase();
-    return ADMIN_ADDRESSES.some(admin => userAddress === admin);
-  }, [address]);
+    const match = ADMIN_ADDRESSES.some(admin => userAddress === admin);
+    // debug in console for troubleshooting
+    try {
+      // eslint-disable-next-line no-console
+      console.debug("Admin check:", { userAddress, ADMIN_ADDRESSES, match });
+    } catch (e) {}
+    return match;
+  }, [address, isConnected]);
 
   // Fetch all data
   const fetchData = async () => {
