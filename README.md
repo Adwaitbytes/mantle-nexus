@@ -15,7 +15,7 @@
 
 ## 🎯 Overview
 
-MERIDIAN is a category-defining protocol that brings institutional-grade real-world asset (RWA) tokenization, trading, and yield optimization to the Mantle ecosystem. Built specifically for the **Mantle Global Hackathon 2025**, MERIDIAN demonstrates the future of compliant, yield-bearing assets on-chain.
+MERIDIAN is a category-defining protocol that brings institutional-grade real-world asset (RWA) tokenization, trading, and yield optimization to the Mantle ecosystem. Built specifically for the **Mantle Global Hackathon 2025**, MERIDIAN demonstrates the future of compliant, yield-bearing assets on-chain
 
 ### Why MERIDIAN?
 
