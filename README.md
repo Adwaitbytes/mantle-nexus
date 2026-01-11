@@ -2,7 +2,7 @@
 
 > What happens when you take the complexity of traditional finance, strip away the middlemen, and rebuild everything from scratch with privacy, compliance, and yield optimization at its core?
 
-You get MERIDIAN. A fully functional, production-ready protocol for tokenizing real-world assets on Mantle Network.
+You get MERIDIAN. A fully functional, production-ready protocol for tokenizing real-world assets on Mantle Network
 
 ## What is this, really?
 

@@ -122,9 +122,6 @@ export function Footer() {
           <p className="text-xs text-muted-foreground">
             © 2025 MERIDIAN Protocol. All rights reserved.
           </p>
-          <p className="text-xs text-muted-foreground">
-            Built with ♦️ on Mantle Network
-          </p>
         </div>
       </div>
     </footer>

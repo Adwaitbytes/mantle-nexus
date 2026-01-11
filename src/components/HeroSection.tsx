@@ -128,7 +128,7 @@ export function HeroSection() {
           transition={{ duration: 2, repeat: Infinity }}
           className="flex flex-col items-center gap-2 text-muted-foreground"
         >
-          <span className="text-xs uppercase tracking-widest">Scroll</span>
+          <span className="text-xs uppercase tracking-widest"></span>
           <div className="h-12 w-px bg-gradient-to-b from-primary/50 to-transparent" />
         </motion.div>
       </motion.div>
